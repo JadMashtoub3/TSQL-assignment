@@ -452,3 +452,70 @@ THROW 50220, 'Minimum Qty larger than Maximum Qty', 1
     END CATCH;
 END;
 GO
+/* TASK 16 ADD_COMPLEX_SALE */
+CREATE PROCEDURE ADD_COMPLEX_SALE @pcustid INT, @pprodid INT, @pqty INT, @pdate NVARCHAR AS
+BEGIN
+    BEGIN TRY
+
+        IF ((SELECT STATUS
+        FROM CUSTOMER
+        WHERE CUSTID = @pcustid) NOT IN ('OK'))
+            THROW 50240, 'Customer status is not OK', 1
+        IF @@ROWCOUNT = 0
+            THROW 50260, 'Customer ID not found', 1
+        IF @pqty<1 OR @pqty>999
+            THROW 50230, 'Sale Quantity outside valid range', 1
+        DECLARE @PRODSELLPRICE MONEY;
+        SELECT @PRODSELLPRICE = SELLING_PRICE
+        FROM PRODUCT
+        WHERE PRODID = @pprodid
+        IF @@ROWCOUNT = 0
+            THROW 50270, 'Product ID not found', 1
+        SELECT DATE(@pdate);
+        IF @@ROWCOUNT = 0
+            THROW 50250, 'Date not valid', 1
+        DECLARE @SALEIDFROMSEQ BIGINT;
+        SELECT @SALEIDFROMSEQ = NEXT VALUE FOR SALE_SEQ;
+
+        INSERT INTO SALE(SALEID, CUSTID, PRODID, QTY, PRICE, SALEDATE) 
+        VALUES (@SALEIDFROMSEQ, @pcustid, @pprodid, @pqty, @PRODSELLPRICE, DATE(@pdate));
+
+        DECLARE @UPDATEAMT MONEY
+        SET @UPDATEAMT = @PRODSELLPRICE*@PQTY;
+
+        EXEC UPD_CUST_SALESYTD @pcustid = @pcustid, @PAMT = @UPDATEAMT
+        EXEC UPD_PROD_SALESYTD @pprodid = @pprodid, @PAMT = @UPDATEAMT
+
+    END TRY
+    BEGIN CATCH
+        if ERROR_NUMBER() in (50240, 50260, 50230, 50270, 50250)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END; 
+    END CATCH;
+END;
+GO
+
+/* TASK 17 GET_ALL_SALES */
+IF OBJECT_ID('GET_ALL_SALES') IS NOT NULL
+DROP PROCEDURE GET_ALL_SALES;
+GO 
+
+CREATE PROCEDURE GET_ALL_SALES @POUTCUR CURSOR VARYING OUTPUT AS
+BEGIN
+    BEGIN TRY
+        DECLARE @OSALEID BIGINT, @OCUSTID INT, @OPRODID INT, @OQTY INT, @OPRICE MONEY, @OSALEDATE DATE;
+        SET @POUTCUR = CURSOR FOR SELECT SALEID, CUSTID, PRODID, QTY, PRICE, SALEDATE FROM SALE;
+        OPEN @POUTCUR;
+    END TRY
+    BEGIN CATCH
+        BEGIN
+            DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+            THROW 50000, @ERRORMESSAGE, 1
+        END;
+    END CATCH
+END;
+GO
