@@ -419,3 +419,36 @@ BEGIN
     END CATCH
 END;
 GO
+
+/* TASK 15 ADD_LOCATION */
+
+CREATE PROCEDURE ADD_LOCATION @ploccode NVARCHAR, @pminqty INT, @pmaxqty INT AS
+BEGIN
+BEGIN TRY
+
+IF LEN(@ploccode)!=5
+THROW 50190, 'Location Code length invalid', 1       
+IF @pminqty < 0 OR @pminqty > 999
+THROW 50200, 'Minimum Qty out of range', 1
+IF @pmaxqty < 0 OR @pmaxqty > 999
+THROW 50210, 'Maximum Qty out of range', 1
+IF @pmaxqty < @pminqty
+THROW 50220, 'Minimum Qty larger than Maximum Qty', 1
+
+    INSERT INTO LOCATION (LOCID, MINQTY, MAXQTY) 
+    VALUES (@ploccode, @pminqty, @pmaxqty);
+
+    END TRY
+    BEGIN CATCH
+        if ERROR_NUMBER() = 2627
+                THROW 50180, 'Duplicate location ID', 1
+        if ERROR_NUMBER() in (50190, 50200, 50210, 50220)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END; 
+    END CATCH;
+END;
+GO
