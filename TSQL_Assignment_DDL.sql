@@ -795,6 +795,7 @@ BEGIN
             END; 
     END CATCH;
 END;
+GO
 -- EXEC DELETE_CUSTOMER @PCUSTID = 1
 
 /* TASK 22 DELETE_PRODUCT */
@@ -814,16 +815,15 @@ BEGIN
 
     END TRY
     BEGIN CATCH
-    if ERROR_NUMBER() = 547
-        THROW 50320, 'Product cannot be deleted as sales exist', 1
+        if ERROR_NUMBER() = 547
+            THROW 50320, 'Product cannot be deleted as sales exist', 1
         ELSE if ERROR_NUMBER() in (50310)
-        THROW
-        
+            THROW
         ELSE
-        BEGIN
-            DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
-            THROW 50000, @ERRORMESSAGE, 1
-        END; 
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END; 
     END CATCH;
 END;
 GO
@@ -848,3 +848,7 @@ GO
  FROM PRODUCT
  SELECT *
  FROM [LOCATION]
+
+SELECT table_catalog [database], table_schema [schema], table_name name, table_type type
+FROM INFORMATION_SCHEMA.TABLES
+GO
